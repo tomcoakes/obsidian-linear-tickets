@@ -43,7 +43,10 @@ export class HoverCard {
     plugin.registerDomEvent(doc, "mouseover", (e) => this.onEnter(e.target));
     plugin.registerDomEvent(doc, "mouseout", (e) => this.onLeave(e.relatedTarget));
     plugin.registerDomEvent(doc, "focusin", (e) => this.onEnter(e.target, 0));
-    plugin.registerDomEvent(doc, "focusout", (e) => this.onLeave(e.relatedTarget));
+    // Only a ticket losing focus counts: focus moving elsewhere in the app shouldn't close a mouse-opened card.
+    plugin.registerDomEvent(doc, "focusout", (e) => {
+      if ((e.target as Element | null)?.closest?.(`.${TICKET_CLASS}`)) this.onLeave(e.relatedTarget);
+    });
     plugin.registerDomEvent(doc, "click", (e) => this.onClick(e));
     plugin.registerDomEvent(doc, "keydown", (e) => e.key === "Escape" && this.hide());
     plugin.registerDomEvent(doc, "mousedown", (e) => !this.isInCard(e.target) && this.hide());

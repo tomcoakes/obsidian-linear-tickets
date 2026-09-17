@@ -78,7 +78,8 @@ a.linear-ticket:focus-visible {
   max-width: 100%;
   padding: 0 0.6em 0 0.5em;
   border-radius: 999px;
-  background: var(--background-modifier-hover);
+  /* A tint of the text colour, not the theme's hover grey: it stays in the family of whatever ground it sits on. */
+  background: color-mix(in srgb, var(--text-normal) 7%, transparent);
   line-height: 1.32;
   text-decoration: none;
   vertical-align: baseline;
@@ -111,7 +112,28 @@ a.linear-ticket:focus-visible {
 
 .linear-ticket.is-chip:hover,
 a.linear-ticket.is-chip:focus-visible {
-  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  background: color-mix(in srgb, var(--text-normal) 12%, transparent);
+}
+
+/*
+ * Light grounds: link colours are tuned against the page, so the chip's tint costs them contrast,
+ * and opacity dimming that reads as "receded" on dark reads as "illegible" on light. Darken the ID
+ * a step, and let finished tickets recede by losing their accent colour rather than their ink.
+ */
+.theme-light .linear-ticket.is-chip > .linear-ticket-inline-id {
+  color: color-mix(in srgb, currentColor 82%, black);
+}
+
+.theme-light .linear-ticket[data-state-type="completed"],
+.theme-light .linear-ticket[data-state-type="canceled"] {
+  opacity: 0.88;
+  color: var(--text-muted);
+}
+
+.theme-light .linear-ticket-card__time,
+.theme-light .linear-ticket-card__project-icon,
+.theme-light .linear-ticket-card__person.is-unassigned {
+  color: var(--text-muted);
 }
 
 /* ── Hover card ────────────────────────────────────────────── */
@@ -171,7 +193,7 @@ a.linear-ticket.is-chip:focus-visible {
   gap: 6px;
   padding: 1px 9px 1px 7px;
   border-radius: 999px;
-  background: var(--background-modifier-hover);
+  background: color-mix(in srgb, var(--text-normal) 7%, transparent);
   color: var(--text-normal);
   font-weight: var(--font-medium);
 }
@@ -280,7 +302,7 @@ a.linear-ticket.is-chip:focus-visible {
 .linear-ticket-card__title code {
   padding: 1px 5px;
   border-radius: 4px;
-  background: var(--background-modifier-hover);
+  background: color-mix(in srgb, var(--text-normal) 7%, transparent);
   color: inherit;
   font-family: var(--font-monospace);
   font-size: 0.88em;
