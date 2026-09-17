@@ -1,6 +1,6 @@
 {
   "name": "obsidian-linear-tickets",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Turns Linear ticket IDs in Obsidian notes into links with hover cards.",
   "main": "main.js",
   "private": true,

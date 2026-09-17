@@ -1,7 +1,7 @@
 {
   "id": "linear-tickets",
   "name": "Linear Tickets",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "minAppVersion": "1.11.4",
   "description": "Turns Linear ticket IDs like ENG-123 into links with a hover card describing the ticket.",
   "author": "Tom Coakes",
