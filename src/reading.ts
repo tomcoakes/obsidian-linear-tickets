@@ -45,11 +45,17 @@ export function linkifyTickets(el: HTMLElement, host: TicketHost): void {
   if (mode !== "off") host.ensure(seen);
 }
 
-/** Repaints already-rendered links for tickets whose data just arrived. */
-export function refreshLinks(root: HTMLElement, ids: Set<string>, host: TicketHost): void {
+/**
+ * Repaints already-rendered links: the given tickets when their data arrives, or all of them
+ * (`ids` null) when settings change. Covers Live Preview's embedded renders (tables, callouts)
+ * as well as reading view, which re-rendering a view's preview alone does not.
+ */
+export function refreshLinks(root: HTMLElement, ids: Set<string> | null, host: TicketHost): void {
   const mode = host.inlineMode();
   root.querySelectorAll<HTMLElement>(`a.${TICKET_CLASS}`).forEach((link) => {
     const id = link.getAttribute(TICKET_ATTR);
-    if (id && ids.has(id)) renderTicket(link, id, inlineViewOf(host.peek(id), mode));
+    if (!id || (ids && !ids.has(id))) return;
+    link.setAttribute("href", host.urlFor(id));
+    renderTicket(link, id, inlineViewOf(host.peek(id), mode));
   });
 }

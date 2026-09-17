@@ -7,7 +7,7 @@ import { openExternal } from "./open";
 import { linkifyTickets, refreshLinks } from "./reading";
 import { LinearTicketsSettingTab } from "./settings";
 import { IssueStore } from "./store";
-import { CacheEntry, DEFAULT_SETTINGS, InlineMode, LinearTicketsSettings } from "./types";
+import { CacheEntry, DEFAULT_SETTINGS, InlineMode, LinearTicketsSettings, TICKET_ATTR, TICKET_CLASS } from "./types";
 
 const INLINE_MODES: InlineMode[] = ["off", "status", "title"];
 const INLINE_MODE_NAMES: Record<InlineMode, string> = { off: "off", status: "status only", title: "status + title" };
@@ -82,7 +82,7 @@ export default class LinearTicketsPlugin extends Plugin implements TicketHost, H
   }
 
   /** Ticket data arrived: nudge open editors to rebuild decorations and patch rendered links in place. */
-  private repaint(ids: Set<string>): void {
+  private repaint(ids: Set<string> | null): void {
     this.app.workspace.iterateAllLeaves((leaf) => {
       if (!(leaf.view instanceof MarkdownView)) return;
       // `cm` is the editor's CodeMirror view; Obsidian doesn't type it.
@@ -90,6 +90,18 @@ export default class LinearTicketsPlugin extends Plugin implements TicketHost, H
       cm?.dispatch({ effects: ticketsChanged.of(null) });
       refreshLinks(leaf.view.containerEl, ids, this);
     });
+  }
+
+  /** Turning previews on should load tickets already on screen, not wait for the next render. */
+  private ensureRendered(): void {
+    const ids = new Set<string>();
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      leaf.view.containerEl.querySelectorAll(`a.${TICKET_CLASS}`).forEach((link) => {
+        const id = link.getAttribute(TICKET_ATTR);
+        if (id) ids.add(id);
+      });
+    });
+    this.store.ensure(ids);
   }
 
   open(id: string): void {
@@ -107,10 +119,13 @@ export default class LinearTicketsPlugin extends Plugin implements TicketHost, H
     this.regex = buildTicketRegex(parseTeamKeys(this.settings.teamKeys));
     // Forces a reconfigure transaction, which the editor extension treats as a cue to re-scan.
     this.app.workspace.updateOptions();
-    // Reading-view links bake their href in at render time.
+    // Reading view re-renders so a changed ticket pattern is re-matched; repaint then brings links
+    // that re-render doesn't reach (tables and callouts embedded in Live Preview) up to date too.
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
       if (leaf.view instanceof MarkdownView) leaf.view.previewMode.rerender(true);
     }
+    this.repaint(null);
+    if (this.settings.inlinePreview !== "off") this.ensureRendered();
   }
 
   private getApiKey(): string | null {
