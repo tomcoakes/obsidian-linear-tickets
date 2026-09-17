@@ -1,0 +1,313 @@
+/* Consumes the vault's --ap-* palette when present, falling back to theme variables elsewhere. */
+body {
+  --lt-accent: var(--ap-teal, var(--interactive-accent));
+  --lt-alert: var(--ap-alert, var(--text-error));
+}
+
+/* ── Inline ticket ─────────────────────────────────────────── */
+
+.linear-ticket {
+  color: var(--link-external-color, var(--link-color));
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 120ms ease;
+}
+
+a.linear-ticket {
+  cursor: pointer;
+}
+
+.linear-ticket:hover,
+a.linear-ticket:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+/* ── Hover card ────────────────────────────────────────────── */
+
+/* The surface is mixed from the theme's own background so it stays in the same neutral family. */
+.theme-dark {
+  --lt-surface: color-mix(in srgb, var(--background-primary) 93%, white);
+  --lt-hairline: color-mix(in srgb, var(--background-primary) 82%, white);
+  --lt-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px -4px rgb(0 0 0 / 0.45);
+}
+
+.theme-light {
+  --lt-surface: color-mix(in srgb, var(--background-primary) 35%, white);
+  --lt-hairline: var(--background-modifier-border);
+  --lt-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 12px 32px -6px rgb(0 0 0 / 0.16);
+}
+
+.linear-ticket-card {
+  position: fixed;
+  z-index: var(--layer-tooltip, 70);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  padding: 12px 14px;
+  border: 1px solid var(--lt-hairline);
+  border-radius: 10px;
+  background: var(--lt-surface);
+  box-shadow: var(--lt-shadow);
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.45;
+  animation: linear-ticket-card-in 120ms ease-out;
+}
+
+@keyframes linear-ticket-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+/* Header: state pill · ID · priority */
+
+.linear-ticket-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.linear-ticket-card__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 9px 1px 7px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  font-weight: var(--font-medium);
+}
+
+.linear-ticket-card__state[data-state-type="started"],
+.linear-ticket-card__state[data-state-type="completed"] {
+  background: color-mix(in srgb, var(--lt-accent) 16%, transparent);
+}
+
+.linear-ticket-card__state[data-state-type="canceled"] {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* State shown by fill, not hue: ring → half → solid. */
+.linear-ticket-card__dot {
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--text-faint);
+  border-radius: 50%;
+}
+
+[data-state-type="started"] > .linear-ticket-card__dot {
+  border-color: var(--lt-accent);
+  background: linear-gradient(to right, var(--lt-accent) 50%, transparent 50%);
+}
+
+[data-state-type="completed"] > .linear-ticket-card__dot {
+  border-color: var(--lt-accent);
+  background: var(--lt-accent);
+}
+
+[data-state-type="canceled"] > .linear-ticket-card__dot {
+  background: var(--text-faint);
+}
+
+.linear-ticket-card__id {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.linear-ticket-card__priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.linear-ticket-card__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 10px;
+}
+
+.linear-ticket-card__bars > span {
+  width: 3px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.28;
+}
+
+.linear-ticket-card__bars > span:nth-child(1) {
+  height: 4px;
+}
+
+.linear-ticket-card__bars > span:nth-child(2) {
+  height: 7px;
+}
+
+.linear-ticket-card__bars > span:nth-child(3) {
+  height: 10px;
+}
+
+/* Linear's scale: 1 urgent, 2 high, 3 medium, 4 low. */
+[data-priority="1"] .linear-ticket-card__bars > span,
+[data-priority="2"] .linear-ticket-card__bars > span,
+[data-priority="3"] .linear-ticket-card__bars > span:nth-child(-n + 2),
+[data-priority="4"] .linear-ticket-card__bars > span:nth-child(1) {
+  opacity: 1;
+}
+
+.linear-ticket-card__priority[data-priority="1"] {
+  color: var(--lt-alert);
+  font-weight: var(--font-semibold);
+}
+
+/* Body */
+
+.linear-ticket-card__title {
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  text-wrap: pretty;
+}
+
+.linear-ticket-card__title:hover,
+.linear-ticket-card__title:focus-visible {
+  color: var(--link-external-color, var(--link-color));
+}
+
+.linear-ticket-card__title code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  color: inherit;
+  font-family: var(--font-monospace);
+  font-size: 0.88em;
+  font-weight: var(--font-medium);
+}
+
+.linear-ticket-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.linear-ticket-card__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.linear-ticket-card__labels > span {
+  padding: 0 7px;
+  border: 1px solid var(--lt-hairline);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+/* Footer: who and where on the left, age on the right, never wrapping. */
+
+.linear-ticket-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px solid var(--lt-hairline);
+  color: var(--text-muted);
+}
+
+.linear-ticket-card__context {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.linear-ticket-card__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--lt-accent) 22%, transparent);
+  color: var(--text-normal);
+  font-size: 9px;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.02em;
+}
+
+.linear-ticket-card__person {
+  overflow: hidden;
+  max-width: 55%;
+  color: var(--text-normal);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linear-ticket-card__person.is-unassigned {
+  color: var(--text-faint);
+}
+
+.linear-ticket-card__project {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-left: 6px;
+}
+
+.linear-ticket-card__project > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linear-ticket-card__project-icon {
+  display: inline-flex;
+  flex: none;
+  --icon-size: 12px;
+  --icon-stroke: 2px;
+  color: var(--text-faint);
+}
+
+.linear-ticket-card__time {
+  flex: none;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.linear-ticket-card__message {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.linear-ticket-card__message.is-error {
+  color: var(--text-normal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linear-ticket,
+  .linear-ticket-card {
+    transition: none;
+    animation: none;
+  }
+}
