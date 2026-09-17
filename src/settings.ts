@@ -57,6 +57,23 @@ export class LinearTicketsSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Inline preview")
+      .setDesc(
+        "Show each ticket's status, or status and title, next to its ID. Notes are not modified. Unlike hover cards, this asks Linear about a note's tickets when the note is shown.",
+      )
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("off", "Off")
+          .addOption("status", "Status only")
+          .addOption("title", "Status + title")
+          .setValue(plugin.settings.inlinePreview)
+          .onChange(async (value) => {
+            plugin.settings.inlinePreview = value === "status" || value === "title" ? value : "off";
+            await plugin.saveSettings(true);
+          }),
+      );
+
+    new Setting(containerEl)
       .setName("Hover delay")
       .setDesc("Milliseconds the pointer rests on a ticket before its card opens.")
       .addSlider((slider) =>

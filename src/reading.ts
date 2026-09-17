@@ -1,4 +1,5 @@
 import { TicketHost } from "./editor";
+import { inlineViewOf, renderTicket } from "./inline";
 import { TICKET_ATTR, TICKET_CLASS } from "./types";
 
 const SKIPPED_ANCESTORS = `a, code, pre, .tag, .frontmatter, .math, .${TICKET_CLASS}`;
@@ -16,6 +17,9 @@ export function linkifyTickets(el: HTMLElement, host: TicketHost): void {
     if (!node.parentElement?.closest(SKIPPED_ANCESTORS)) textNodes.push(node);
   }
 
+  const mode = host.inlineMode();
+  const seen = new Set<string>();
+
   for (const node of textNodes) {
     const text = node.data;
     const matches = [...text.matchAll(regex)];
@@ -26,15 +30,26 @@ export function linkifyTickets(el: HTMLElement, host: TicketHost): void {
     for (const match of matches) {
       fragment.append(text.slice(cursor, match.index));
       // No aria-label: Obsidian would turn it into its own tooltip on top of the hover card.
-      fragment.createEl("a", {
-        cls: TICKET_CLASS,
-        text: match[0],
+      const link = fragment.createEl("a", {
         href: host.urlFor(match[0]),
-        attr: { [TICKET_ATTR]: match[0], target: "_blank", rel: "noopener" },
+        attr: { target: "_blank", rel: "noopener" },
       });
+      renderTicket(link, match[0], inlineViewOf(host.peek(match[0]), mode));
+      seen.add(match[0]);
       cursor = match.index + match[0].length;
     }
     fragment.append(text.slice(cursor));
     node.replaceWith(fragment);
   }
+
+  if (mode !== "off") host.ensure(seen);
+}
+
+/** Repaints already-rendered links for tickets whose data just arrived. */
+export function refreshLinks(root: HTMLElement, ids: Set<string>, host: TicketHost): void {
+  const mode = host.inlineMode();
+  root.querySelectorAll<HTMLElement>(`a.${TICKET_CLASS}`).forEach((link) => {
+    const id = link.getAttribute(TICKET_ATTR);
+    if (id && ids.has(id)) renderTicket(link, id, inlineViewOf(host.peek(id), mode));
+  });
 }

@@ -26,11 +26,14 @@ export class LinearError extends Error {
   }
 }
 
+export type InlineMode = "off" | "status" | "title";
+
 export interface LinearTicketsSettings {
   workspaceSlug: string;
   teamKeys: string;
   apiKeySecret: string;
   openIn: "app" | "browser";
+  inlinePreview: InlineMode;
   hoverDelayMs: number;
   showDescription: boolean;
 }
@@ -40,6 +43,7 @@ export const DEFAULT_SETTINGS: LinearTicketsSettings = {
   teamKeys: "",
   apiKeySecret: "",
   openIn: "browser",
+  inlinePreview: "off",
   hoverDelayMs: 300,
   showDescription: true,
 };

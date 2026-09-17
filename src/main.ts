@@ -1,12 +1,16 @@
 import { MarkdownView, Notice, Plugin } from "obsidian";
-import { ticketEditorExtension, TicketHost } from "./editor";
+import { EditorView } from "@codemirror/view";
+import { ticketEditorExtension, TicketHost, ticketsChanged } from "./editor";
 import { HoverCard, HoverHost } from "./hover";
 import { buildTicketRegex, issueUrl, parseTeamKeys } from "./matcher";
 import { openExternal } from "./open";
-import { linkifyTickets } from "./reading";
+import { linkifyTickets, refreshLinks } from "./reading";
 import { LinearTicketsSettingTab } from "./settings";
 import { IssueStore } from "./store";
-import { DEFAULT_SETTINGS, LinearTicketsSettings } from "./types";
+import { CacheEntry, DEFAULT_SETTINGS, InlineMode, LinearTicketsSettings } from "./types";
+
+const INLINE_MODES: InlineMode[] = ["off", "status", "title"];
+const INLINE_MODE_NAMES: Record<InlineMode, string> = { off: "off", status: "status only", title: "status + title" };
 
 export default class LinearTicketsPlugin extends Plugin implements TicketHost, HoverHost {
   settings: LinearTicketsSettings = DEFAULT_SETTINGS;
@@ -19,6 +23,7 @@ export default class LinearTicketsPlugin extends Plugin implements TicketHost, H
 
     this.store = new IssueStore(this.app.vault.adapter, `${this.manifest.dir}/cache.json`, () => this.getApiKey());
     await this.store.load();
+    this.register(this.store.onChange((ids) => this.repaint(new Set(ids))));
 
     this.registerMarkdownPostProcessor((el) => linkifyTickets(el, this));
     this.registerEditorExtension(ticketEditorExtension(this));
@@ -31,6 +36,16 @@ export default class LinearTicketsPlugin extends Plugin implements TicketHost, H
     });
 
     this.addSettingTab(new LinearTicketsSettingTab(this.app, this));
+    this.addCommand({
+      id: "cycle-inline-preview",
+      name: "Cycle inline preview (off → status → status + title)",
+      callback: async () => {
+        const next = INLINE_MODES[(INLINE_MODES.indexOf(this.settings.inlinePreview) + 1) % INLINE_MODES.length];
+        this.settings.inlinePreview = next;
+        await this.saveSettings(true);
+        new Notice(`Linear inline preview: ${INLINE_MODE_NAMES[next]}`);
+      },
+    });
     this.addCommand({
       id: "clear-cache",
       name: "Clear ticket cache",
@@ -52,6 +67,29 @@ export default class LinearTicketsPlugin extends Plugin implements TicketHost, H
 
   urlFor(id: string): string {
     return issueUrl(this.settings.workspaceSlug, id, this.settings.openIn);
+  }
+
+  inlineMode(): InlineMode {
+    return this.settings.inlinePreview;
+  }
+
+  peek(id: string): CacheEntry | undefined {
+    return this.store.peek(id);
+  }
+
+  ensure(ids: Iterable<string>): void {
+    this.store.ensure(ids);
+  }
+
+  /** Ticket data arrived: nudge open editors to rebuild decorations and patch rendered links in place. */
+  private repaint(ids: Set<string>): void {
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (!(leaf.view instanceof MarkdownView)) return;
+      // `cm` is the editor's CodeMirror view; Obsidian doesn't type it.
+      const cm = (leaf.view.editor as unknown as { cm?: EditorView }).cm;
+      cm?.dispatch({ effects: ticketsChanged.of(null) });
+      refreshLinks(leaf.view.containerEl, ids, this);
+    });
   }
 
   open(id: string): void {

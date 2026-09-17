@@ -1,14 +1,21 @@
 import { syntaxTree } from "@codemirror/language";
-import { Extension, RangeSetBuilder } from "@codemirror/state";
-import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
-import { Keymap } from "obsidian";
-import { TICKET_ATTR, TICKET_CLASS } from "./types";
+import { Extension, Range, StateEffect } from "@codemirror/state";
+import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
+import { editorLivePreviewField, Keymap } from "obsidian";
+import { dotAttributes, InlineView, inlineViewOf, renderTicket } from "./inline";
+import { CacheEntry, InlineMode, TICKET_ATTR, TICKET_CLASS } from "./types";
 
 export interface TicketHost {
   getRegex(): RegExp | null;
   urlFor(id: string): string;
   open(id: string): void;
+  inlineMode(): InlineMode;
+  peek(id: string): CacheEntry | undefined;
+  ensure(ids: Iterable<string>): void;
 }
+
+/** Dispatched to open editors when ticket data arrives, so inline previews repaint. */
+export const ticketsChanged = StateEffect.define<null>();
 
 // Obsidian's markdown tree is flat, with node names built from token classes
 // (e.g. "formatting_formatting-code_inline-code", "hmd-internal-link", "string_url").
@@ -21,25 +28,65 @@ function isSkippedContext(view: EditorView, pos: number): boolean {
   return false;
 }
 
+/**
+ * Status + title chip. It replaces the ID on screen only, and only while the selection is
+ * elsewhere: touching it reveals the plain editable ID, as Live Preview does for links.
+ * One element rather than pieces around the text, because CodeMirror separates adjacent
+ * widgets and text with zero-width buffers that let a pieced-together chip break across lines.
+ */
+class ChipWidget extends WidgetType {
+  constructor(private id: string, private inline: InlineView) {
+    super();
+  }
+
+  eq(other: ChipWidget): boolean {
+    return other.id === this.id && other.inline.stateType === this.inline.stateType && other.inline.title === this.inline.title;
+  }
+
+  toDOM(view: EditorView): HTMLElement {
+    const el = view.dom.ownerDocument.createElement("span");
+    renderTicket(el, this.id, this.inline);
+    return el;
+  }
+
+  // Let Mod-click reach the handler below; a plain click lands the cursor beside the chip, revealing the ID.
+  ignoreEvent(): boolean {
+    return false;
+  }
+}
+
 function buildDecorations(view: EditorView, host: TicketHost): DecorationSet {
   const regex = host.getRegex();
-  const builder = new RangeSetBuilder<Decoration>();
-  if (!regex) return builder.finish();
+  if (!regex) return Decoration.none;
+
+  // Source mode shows the file as written; previews are a Live Preview feature.
+  const mode = view.state.field(editorLivePreviewField, false) ? host.inlineMode() : "off";
+  const selection = view.state.selection.ranges;
+  const ranges: Range<Decoration>[] = [];
+  const seen = new Set<string>();
 
   for (const { from, to } of view.visibleRanges) {
     const text = view.state.sliceDoc(from, to);
     for (const match of text.matchAll(regex)) {
+      const id = match[0];
       const start = from + match.index;
+      const end = start + id.length;
       if (isSkippedContext(view, start)) continue;
-      // A mark (not a replace widget) keeps the ID as ordinary editable text.
-      builder.add(
-        start,
-        start + match[0].length,
-        Decoration.mark({ class: TICKET_CLASS, attributes: { [TICKET_ATTR]: match[0] } }),
-      );
+
+      seen.add(id);
+      const inline = inlineViewOf(host.peek(id), mode);
+      const touched = selection.some((range) => range.from <= end && range.to >= start);
+      if (inline?.title && !touched) {
+        ranges.push(Decoration.replace({ widget: new ChipWidget(id, inline) }).range(start, end));
+      } else {
+        // A mark keeps the ID as ordinary editable text; the status dot is CSS on the same span.
+        ranges.push(Decoration.mark(dotAttributes(id, inline)).range(start, end));
+      }
     }
   }
-  return builder.finish();
+
+  if (mode !== "off") host.ensure(seen);
+  return Decoration.set(ranges, true);
 }
 
 export function ticketEditorExtension(host: TicketHost): Extension {
@@ -53,8 +100,12 @@ export function ticketEditorExtension(host: TicketHost): Extension {
 
       update(update: ViewUpdate) {
         const reparsed = syntaxTree(update.startState) !== syntaxTree(update.state);
-        const reconfigured = update.transactions.some((tr) => tr.reconfigured);
-        if (update.docChanged || update.viewportChanged || reparsed || reconfigured) {
+        const signalled = update.transactions.some(
+          (tr) => tr.reconfigured || tr.effects.some((effect) => effect.is(ticketsChanged)),
+        );
+        // Chips open and close as the selection reaches them, so title mode also tracks the selection.
+        const selected = update.selectionSet && host.inlineMode() === "title";
+        if (update.docChanged || update.viewportChanged || reparsed || signalled || selected) {
           this.decorations = buildDecorations(update.view, host);
         }
       }

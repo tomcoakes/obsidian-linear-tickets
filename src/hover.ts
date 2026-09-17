@@ -26,6 +26,7 @@ export interface HoverHost {
 export class HoverCard {
   private cardEl: HTMLElement | null = null;
   private anchorEl: HTMLElement | null = null;
+  private anchorRect: DOMRect | null = null;
   private currentId: string | null = null;
   private showTimer: number | null = null;
   private hideTimer: number | null = null;
@@ -123,7 +124,7 @@ export class HoverCard {
     this.clearTimer("hideTimer");
     this.anchorEl?.removeAttribute("aria-describedby");
     this.cardEl?.remove();
-    this.cardEl = this.anchorEl = this.currentId = null;
+    this.cardEl = this.anchorEl = this.anchorRect = this.currentId = null;
   }
 
   private renderEntry(id: string, entry: CacheEntry): void {
@@ -199,8 +200,10 @@ export class HoverCard {
     const anchor = this.anchorEl;
     if (!card || !anchor) return;
 
+    // Arriving data can make the editor re-create the ticket's element; a detached one reports a zero rect.
+    if (anchor.isConnected || !this.anchorRect) this.anchorRect = anchor.getBoundingClientRect();
     const win = anchor.ownerDocument.defaultView ?? window;
-    const rect = anchor.getBoundingClientRect();
+    const rect = this.anchorRect;
     const { offsetWidth: width, offsetHeight: height } = card;
 
     const below = rect.bottom + GAP_PX;

@@ -23,6 +23,97 @@ a.linear-ticket:focus-visible {
   text-decoration-color: currentColor;
 }
 
+/* ── Inline preview ────────────────────────────────────────── */
+
+/*
+ * The status dot is a pseudo-element on the ticket itself, so it adds no DOM and can't be
+ * separated from the ID. Same fill language as the card: ring → half → solid.
+ */
+.linear-ticket.has-dot {
+  white-space: nowrap;
+}
+
+.linear-ticket.has-dot::before {
+  content: "";
+  display: inline-block;
+  box-sizing: border-box;
+  flex: none;
+  width: 0.62em;
+  height: 0.62em;
+  margin-right: 0.35em;
+  border: 1.5px solid var(--text-faint);
+  border-radius: 50%;
+  vertical-align: 0.04em;
+}
+
+.linear-ticket[data-state-type="started"]::before {
+  border-color: var(--lt-accent);
+  background: linear-gradient(to right, var(--lt-accent) 50%, transparent 50%);
+}
+
+.linear-ticket[data-state-type="completed"]::before {
+  border-color: var(--lt-accent);
+  background: var(--lt-accent);
+}
+
+.linear-ticket[data-state-type="canceled"]::before {
+  background: var(--text-faint);
+}
+
+/* Finished work recedes, so what's still open stands out in a list of tickets. */
+.linear-ticket[data-state-type="completed"],
+.linear-ticket[data-state-type="canceled"] {
+  opacity: 0.62;
+}
+
+.linear-ticket[data-state-type="canceled"] {
+  text-decoration-line: line-through;
+  text-decoration-style: solid;
+}
+
+/* Status + title: one pill that shrinks to the line, truncating the title rather than wrapping. */
+.linear-ticket.is-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0 0.6em 0 0.5em;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  line-height: 1.32;
+  text-decoration: none;
+  vertical-align: baseline;
+}
+
+.linear-ticket.is-chip::before {
+  vertical-align: 0;
+}
+
+.linear-ticket-inline-id {
+  flex: none;
+}
+
+/* Capped so a sentence with several tickets still reads as a sentence; the hover card has the full title. */
+.linear-ticket-inline-title {
+  overflow: hidden;
+  min-width: 0;
+  max-width: 11em;
+  margin-left: 0.45em;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+}
+
+/* Set on the title itself: the chip clears text-decoration, and the ID stays clean for scanning. */
+.linear-ticket[data-state-type="completed"] > .linear-ticket-inline-title,
+.linear-ticket[data-state-type="canceled"] > .linear-ticket-inline-title {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, currentColor 75%, transparent);
+}
+
+.linear-ticket.is-chip:hover,
+a.linear-ticket.is-chip:focus-visible {
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+}
+
 /* ── Hover card ────────────────────────────────────────────── */
 
 /* The surface is mixed from the theme's own background so it stays in the same neutral family. */
